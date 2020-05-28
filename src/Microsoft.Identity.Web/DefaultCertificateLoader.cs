@@ -32,7 +32,7 @@ namespace Microsoft.Identity.Web
                         // TODO
                         break;
                     case CertificateSource.StoreWithThumbprint:
-                        certificateDescription.Certificate = LoadLocalCertificateFromThumbprint(certificateDescription.ReferenceOrValue);
+                        certificateDescription.Certificate = LoadLocalCertificateFromThumbprint(certificateDescription.Container, certificateDescription.ReferenceOrValue);
                         break;
                     case CertificateSource.StoreWithDistinguishedName:
                         certificateDescription.Certificate = LoadFromStoreWithDistinguishedName(certificateDescription.Container, certificateDescription.ReferenceOrValue);
@@ -56,39 +56,62 @@ namespace Microsoft.Identity.Web
         }
 
         private static X509Certificate2 LoadLocalCertificateFromThumbprint(
-            string certificateThumbprint,
-            StoreLocation certificateStoreLocation = StoreLocation.CurrentUser,
-            StoreName certificateStoreName = StoreName.My)
+            string certificateThumbprint, string storeDescription = "CurrentUser/My")
         {
-            X509Store x509Store = new X509Store(
-                certificateStoreName,
-                certificateStoreLocation);
+            StoreLocation certificateStoreLocation = StoreLocation.CurrentUser;
+            StoreName certificateStoreName = StoreName.My;
+            ParseStoreLocationAndName(storeDescription, ref certificateStoreLocation, ref certificateStoreName);
 
-            X509Certificate2 cert = FindCertificateByCriterium(
-                x509Store,
-                X509FindType.FindByThumbprint,
-                certificateThumbprint);
+            X509Certificate2 cert;
+            using (X509Store x509Store = new X509Store(
+                certificateStoreName,
+                certificateStoreLocation))
+            {
+                cert = FindCertificateByCriterium(
+                   x509Store,
+                   X509FindType.FindByThumbprint,
+                   certificateThumbprint);
+            }
+
             return cert;
         }
 
-        private static X509Certificate2 LoadFromStoreWithDistinguishedName(string store, string certificateSubjectDistinguishedName)
+        private static X509Certificate2 LoadFromStoreWithDistinguishedName(string certificateSubjectDistinguishedName, string storeDescription = "CurrentUser/My")
         {
-            string[] path = store.Split('/');
-            if (path.Length == 2)
-            {
-
-            }
-
             StoreLocation certificateStoreLocation = StoreLocation.CurrentUser;
             StoreName certificateStoreName = StoreName.My;
-            X509Store x509Store = new X509Store(certificateStoreName, certificateStoreLocation);
-            var by = X509FindType.FindBySubjectDistinguishedName;
-            X509Certificate2 cert = FindCertificateByCriterium(x509Store, X509FindType.FindBySubjectDistinguishedName, certificateSubjectDistinguishedName);
+            ParseStoreLocationAndName(storeDescription, ref certificateStoreLocation, ref certificateStoreName);
+
+            X509Certificate2 cert;
+            using (X509Store x509Store = new X509Store(
+                 certificateStoreName,
+                 certificateStoreLocation))
+            {
+                var by = X509FindType.FindBySubjectDistinguishedName;
+                cert = FindCertificateByCriterium(x509Store, by, certificateSubjectDistinguishedName);
+            }
+
             return cert;
+        }
+
+        private static void ParseStoreLocationAndName(string storeDescription, ref StoreLocation certificateStoreLocation, ref StoreName certificateStoreName)
+        {
+            string[] path = storeDescription.Split('/');
+
+            if (path.Length == 2)
+            {
+                if (path.Length != 2
+                    || !Enum.TryParse<StoreLocation>(path[0], true, out certificateStoreLocation)
+                    || !Enum.TryParse<StoreName>(path[1], true, out certificateStoreName))
+                {
+                    throw new ArgumentException("store should be of the form 'StoreLocation/StoreName' with StoreLocation begin 'CurrentUser' or 'CurrentMachine'"
+                        + $" and StoreName begin '' or in '{string.Join(", ", typeof(StoreName).GetEnumNames())}'");
+                }
+            }
         }
 
         /// <summary>
-        /// Find a certificate by criteria
+        /// Find a certificate by criteria.
         /// </summary>
         /// <param name="x509Store"></param>
         /// <param name="identifierCriterium"></param>
