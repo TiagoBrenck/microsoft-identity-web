@@ -72,7 +72,45 @@ namespace Microsoft.Identity.Web
             };
         }
 
-        // Todo: do the other ones
+        /// <summary>
+        /// Create a certificate description from a thumprint and store location.
+        /// </summary>
+        /// <param name="certificateThumbprint">Certificate thumbprint.</param>
+        /// <param name="certificateStoreLocation">Store location where to find the certificate.</param>
+        /// <param name="certificateStoreName">Store name where to find the certificate.</param>
+        /// <returns>A certificate description.</returns>
+        public static CertificateDescription FromStoreWithThumprint(
+            string certificateThumbprint,
+            StoreLocation certificateStoreLocation = StoreLocation.CurrentUser,
+            StoreName certificateStoreName = StoreName.My)
+        {
+            return new CertificateDescription
+            {
+                SourceType = CertificateSource.StoreWithThumbprint,
+                Container = $"{certificateStoreLocation}/{certificateStoreName}",
+                ReferenceOrValue = certificateThumbprint,
+            };
+        }
+
+        /// <summary>
+        /// Create a certificate description from a thumprint and store location.
+        /// </summary>
+        /// <param name="certificateDistinguishedName">Certificate distinguished named.</param>
+        /// <param name="certificateStoreLocation">Store location where to find the certificate.</param>
+        /// <param name="certificateStoreName">Store name where to find the certificate.</param>
+        /// <returns>A certificate description.</returns>
+        public static CertificateDescription FromStoreWithDistinguishedName(
+            string certificateDistinguishedName,
+            StoreLocation certificateStoreLocation = StoreLocation.CurrentUser,
+            StoreName certificateStoreName = StoreName.My)
+        {
+            return new CertificateDescription
+            {
+                SourceType = CertificateSource.StoreWithThumbprint,
+                Container = $"{certificateStoreLocation}/{certificateStoreName}",
+                ReferenceOrValue = certificateDistinguishedName,
+            };
+        }
 
         /// <summary>
         /// Type of the source of the certificate.

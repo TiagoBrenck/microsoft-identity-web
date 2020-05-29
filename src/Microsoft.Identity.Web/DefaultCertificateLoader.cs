@@ -4,6 +4,8 @@
 using System;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+using Azure.Identity;
+using Azure.Security.KeyVault.Certificates;
 
 namespace Microsoft.Identity.Web
 {
@@ -29,7 +31,7 @@ namespace Microsoft.Identity.Web
                         certificateDescription.Certificate = LoadFromBase64Encoded(certificateDescription.ReferenceOrValue);
                         break;
                     case CertificateSource.Path:
-                        // TODO
+                        certificateDescription.Certificate = LoadFromPath(certificateDescription.Container, certificateDescription.ReferenceOrValue);
                         break;
                     case CertificateSource.StoreWithThumbprint:
                         certificateDescription.Certificate = LoadLocalCertificateFromThumbprint(certificateDescription.Container, certificateDescription.ReferenceOrValue);
@@ -46,17 +48,19 @@ namespace Microsoft.Identity.Web
         private static X509Certificate2 LoadFromBase64Encoded(string certificateBase64)
         {
             byte[] decoded = Convert.FromBase64String(certificateBase64);
-            X509Certificate2 cert = new X509Certificate2(decoded);
-            return cert;
+            return new X509Certificate2(decoded);
         }
 
         private static X509Certificate2 LoadFromKeyVault(string keyVaultUrl, string certificateName)
         {
-            throw new NotImplementedException();
+            var client = new CertificateClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
+            KeyVaultCertificateWithPolicy certificateWithPolicy = client.GetCertificate(certificateName);
+            return new X509Certificate2(certificateWithPolicy.Cer);
         }
 
         private static X509Certificate2 LoadLocalCertificateFromThumbprint(
-            string certificateThumbprint, string storeDescription = "CurrentUser/My")
+            string certificateThumbprint,
+            string storeDescription = "CurrentUser/My")
         {
             StoreLocation certificateStoreLocation = StoreLocation.CurrentUser;
             StoreName certificateStoreName = StoreName.My;
@@ -92,6 +96,16 @@ namespace Microsoft.Identity.Web
             }
 
             return cert;
+        }
+
+        private static X509Certificate2 LoadFromPath(
+            string certificateFileName,
+            string password = null)
+        {
+            return new X509Certificate2(
+                certificateFileName,
+                password,
+                X509KeyStorageFlags.EphemeralKeySet);
         }
 
         private static void ParseStoreLocationAndName(string storeDescription, ref StoreLocation certificateStoreLocation, ref StoreName certificateStoreName)
