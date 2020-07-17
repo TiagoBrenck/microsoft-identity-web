@@ -90,6 +90,19 @@
           "exclude": [
             "Data/SqlServer/**"
           ]
+        },
+        {
+          "condition": "(!GenerateApi)",
+            "exclude": [
+              "Services/DownstreamWebApi.cs"
+            ]
+        },
+        {
+          "condition": "(!CallsMicrosoftGraph)",
+          "exclude": [
+             "Services/MicrosoftGraphServiceExtensions.cs",
+            "Services/TokenAcquisitionCredentialProvider.cs"
+          ]
         }
       ]
     }
@@ -137,21 +150,28 @@
     "SignUpSignInPolicyId": {
       "type": "parameter",
       "datatype": "string",
-      "defaultValue": "",
+      "defaultValue": "b2c_1_susi",
       "replaces": "MySignUpSignInPolicyId",
       "description": "The sign-in and sign-up policy ID for this project (use with IndividualB2C auth)."
+    },
+    "SignedOutCallbackPath": {
+        "type": "parameter",
+        "datatype": "string",
+        "defaultValue": "/signout/B2C_1_susi",
+        "replaces": "/signout/MySignUpSignInPolicyId",
+        "description": "The global signout callback (use with IndividualB2C auth)."
     },
     "ResetPasswordPolicyId": {
       "type": "parameter",
       "datatype": "string",
-      "defaultValue": "",
+      "defaultValue": "b2c_1_reset",
       "replaces": "MyResetPasswordPolicyId",
       "description": "The reset password policy ID for this project (use with IndividualB2C auth)."
     },
     "EditProfilePolicyId": {
       "type": "parameter",
       "datatype": "string",
-      "defaultValue": "",
+      "defaultValue": "b2c_1_edit_profile",
       "replaces": "MyEditProfilePolicyId",
       "description": "The edit profile policy ID for this project (use with IndividualB2C auth)."
     },
@@ -306,12 +326,16 @@
       "datatype": "choice",
       "choices": [
         {
-          "choice": "netcoreapp5.0",
-          "description": "Target netcoreapp5.0"
+          "choice": "net5.0",
+          "description": "Target net5.0"
+        },
+        {
+          "choice": "netcoreapp3.1",
+          "description": "Target netcoreapp3.1"
         }
       ],
-      "replaces": "netcoreapp5.0",
-      "defaultValue": "netcoreapp5.0"
+      "replaces": "net5.0",
+      "defaultValue": "net5.0"
     },
     "copyrightYear": {
       "type": "generated",
@@ -326,6 +350,33 @@
       "datatype": "bool",
       "description": "If specified, skips the automatic restore of the project on create.",
       "defaultValue": "false"
+    },
+    "CalledApiUrl": {
+        "type": "parameter",
+        "datatype": "string",
+        "replaces": "[WebApiUrl]",
+        "defaultValue" : "https://graph.microsoft.com/v1.0/me",
+        "description": "URL of the API to call from the web app."
+    },
+    "CallsMicrosoftGraph": {
+        "type": "parameter",
+        "datatype": "bool",
+        "defaultValue": "false",
+        "description": "Specifies if the web app calls Microsoft Graph."
+    },
+    "CalledApiScopes": {
+      "type": "parameter",
+      "datatype": "string",
+      "replaces" :  "user.read",
+      "description": "Scopes to request to call the API from the web app."
+    },
+    "GenerateApi": {
+        "type": "computed",
+        "value": "(CalledApiUrl != \"https://graph.microsoft.com/v1.0/me\" || CalledApiScopes != \"user.read\")"
+    },
+    "GenerateApiOrGraph": {
+        "type": "computed",
+        "value": "(GenerateApi || CallsMicrosoftGraph)"
     }
   },
   "primaryOutputs": [
@@ -335,16 +386,29 @@
   ],
   "defaultName": "WebApplication",
   "postActions": [
-    {
-      "condition": "(!skipRestore)",
-      "description": "Restore NuGet packages required by this project.",
-      "manualInstructions": [
-        {
-          "text": "Run 'dotnet restore'"
-        }
-      ],
-      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
-      "continueOnError": true
-    }
+  {
+     "condition": "(CallsMicrosoftGraph)",
+     "actionId": "B17581D1-C5C9-4489-8F0A-004BE667B814",
+     "description": "Adds Microsoft Graph package.",
+    "manualInstructions": [
+    ],
+    "args": {
+        "referenceType": "package",
+        "reference": "Microsoft.Graph",
+        "version": "3.8.0"
+    },
+   "continueOnError": true
+  },
+  {
+    "condition": "(!skipRestore)",
+    "description": "Restore NuGet packages required by this project.",
+    "manualInstructions": [
+      {
+        "text": "Run 'dotnet restore'"
+      }
+    ],
+    "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+    "continueOnError": true
+  }
   ]
 }

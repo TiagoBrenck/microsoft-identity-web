@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Logging;
@@ -28,34 +29,32 @@ namespace Microsoft.Identity.Web.Resource
         /// <summary>
         /// Invoked if exceptions are thrown during request processing. The exceptions will be re-thrown after this event unless suppressed.
         /// </summary>
-        private Func<AuthenticationFailedContext, Task> s_onAuthenticationFailed;
+        private Func<AuthenticationFailedContext, Task> s_onAuthenticationFailed = null!;
 
         /// <summary>
         /// Invoked when a protocol message is first received.
         /// </summary>
-        private Func<MessageReceivedContext, Task> s_onMessageReceived;
+        private Func<MessageReceivedContext, Task> s_onMessageReceived = null!;
 
         /// <summary>
         /// Invoked after the security token has passed validation and a ClaimsIdentity has been generated.
         /// </summary>
-        private Func<TokenValidatedContext, Task> s_onTokenValidated;
+        private Func<TokenValidatedContext, Task> s_onTokenValidated = null!;
 
         /// <summary>
         /// Invoked before a challenge is sent back to the caller.
         /// </summary>
-        private Func<JwtBearerChallengeContext, Task> s_onChallenge;
+        private Func<JwtBearerChallengeContext, Task> s_onChallenge = null!;
 
         /// <summary>
         /// Subscribes to all the JwtBearer events, to help debugging, while
         /// preserving the previous handlers (which are called).
         /// </summary>
         /// <param name="events">Events to subscribe to.</param>
+        /// <returns><see cref="JwtBearerEvents"/> for chaining.</returns>
         public JwtBearerEvents Subscribe(JwtBearerEvents events)
         {
-            if (events == null)
-            {
-                events = new JwtBearerEvents();
-            }
+            events ??= new JwtBearerEvents();
 
             s_onAuthenticationFailed = events.OnAuthenticationFailed;
             events.OnAuthenticationFailed = OnAuthenticationFailedAsync;
@@ -74,35 +73,35 @@ namespace Microsoft.Identity.Web.Resource
 
         private async Task OnMessageReceivedAsync(MessageReceivedContext context)
         {
-            _logger.LogDebug($"1. Begin {nameof(OnMessageReceivedAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodBegin, nameof(OnMessageReceivedAsync)));
 
             // Place a breakpoint here and examine the bearer token (context.Request.Headers.HeaderAuthorization / context.Request.Headers["Authorization"])
             // Use https://jwt.ms to decode the token and observe claims
             await s_onMessageReceived(context).ConfigureAwait(false);
-            _logger.LogDebug($"1. End - {nameof(OnMessageReceivedAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodEnd, nameof(OnMessageReceivedAsync)));
         }
 
         private async Task OnAuthenticationFailedAsync(AuthenticationFailedContext context)
         {
-            _logger.LogDebug($"99. Begin {nameof(OnAuthenticationFailedAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodBegin, nameof(OnAuthenticationFailedAsync)));
 
             // Place a breakpoint here and examine context.Exception
             await s_onAuthenticationFailed(context).ConfigureAwait(false);
-            _logger.LogDebug($"99. End - {nameof(OnAuthenticationFailedAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodEnd, nameof(OnAuthenticationFailedAsync)));
         }
 
         private async Task OnTokenValidatedAsync(TokenValidatedContext context)
         {
-            _logger.LogDebug($"2. Begin {nameof(OnTokenValidatedAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodBegin, nameof(OnTokenValidatedAsync)));
             await s_onTokenValidated(context).ConfigureAwait(false);
-            _logger.LogDebug($"2. End - {nameof(OnTokenValidatedAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodEnd, nameof(OnTokenValidatedAsync)));
         }
 
         private async Task OnChallengeAsync(JwtBearerChallengeContext context)
         {
-            _logger.LogDebug($"55. Begin {nameof(OnChallengeAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodBegin, nameof(OnChallengeAsync)));
             await s_onChallenge(context).ConfigureAwait(false);
-            _logger.LogDebug($"55. End - {nameof(OnChallengeAsync)}");
+            _logger.LogDebug(string.Format(CultureInfo.InvariantCulture, LogMessages.MethodEnd, nameof(OnChallengeAsync)));
         }
     }
 }

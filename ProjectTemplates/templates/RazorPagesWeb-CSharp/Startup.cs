@@ -41,6 +41,12 @@ using Microsoft.Extensions.Hosting;
 #if(MultiOrgAuth)
 using Microsoft.IdentityModel.Tokens;
 #endif
+#if (GenerateApiOrGraph)
+using Company.WebApplication1.Services;
+#endif
+#if (CallsMicrosoftGraph)
+using Microsoft.Graph;
+#endif
 
 namespace Company.WebApplication1
 {
@@ -68,28 +74,48 @@ namespace Company.WebApplication1
             services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 #elif (OrganizationalAuth)
-            services.AddSignIn(Configuration, "AzureAd");
-            // Uncomment the following lines if you want your Web app to call a downstream API
-            // services.AddWebAppCallsProtectedWebApi(Configuration, 
-            //                                        new string[] { "user.read" }, 
-            //                                        "AzureAd")
-            //         .AddInMemoryTokenCaches();
-
+            services.AddMicrosoftWebAppAuthentication(Configuration, "AzureAd")
+#if (GenerateApi || CallsMicrosoftGraph)
+                    .AddMicrosoftWebAppCallsWebApi(Configuration, 
+                                                   "AzureAd")
+                    .AddInMemoryTokenCaches();
+#else
+                    ;
+#endif
+#if (GenerateApi)
+            services.AddDownstreamWebApiService(Configuration);
+#endif
+#if (CallsMicrosoftGraph)
+            services.AddMicrosoftGraph(Configuration.GetValue<string>("CalledApi:CalledApiScopes")?.Split(' '),
+                                       Configuration.GetValue<string>("CalledApi:CalledApiUrl"));
+#endif
 #elif (IndividualB2CAuth)
-            services.AddSignIn(Configuration, "AzureAdB2C");
+            services.AddMicrosoftWebAppAuthentication(Configuration, "AzureAdB2C")
+#if (GenerateApi)
+                    .AddMicrosoftWebAppCallsWebApi(Configuration, 
+                                                   "AzureAdB2C")
+                    .AddInMemoryTokenCaches();
+
+            services.AddDownstreamWebApiService(Configuration);
+#else
+                    ;
+#endif
 #endif
 #if (OrganizationalAuth)
 
-            services.AddRazorPages().AddMvcOptions(options =>
+            services.AddAuthorization(options =>
             {
-                var policy = new AuthorizationPolicyBuilder()
-                    .RequireAuthenticatedUser()
-                    .Build();
-                options.Filters.Add(new AuthorizeFilter(policy));
-            }).AddMicrosoftIdentityUI();
-#else
+                // By default, all incoming requests will be authorized according to the default policy
+                options.FallbackPolicy = options.DefaultPolicy;
+            });
+            services.AddRazorPages()
+                    .AddMvcOptions(options => {})
+                    .AddMicrosoftIdentityUI();
+#elif (IndividualB2CAuth)
             services.AddRazorPages()
                     .AddMicrosoftIdentityUI();
+#else
+            services.AddRazorPages();
 #endif
         }
 

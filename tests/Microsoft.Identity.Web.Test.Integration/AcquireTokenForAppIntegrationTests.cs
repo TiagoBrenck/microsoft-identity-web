@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Globalization;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -28,7 +27,6 @@ namespace Microsoft.Identity.Web.Test.Integration
         private TokenAcquisition _tokenAcquisition;
         private ServiceProvider _provider;
         private MsalTestTokenCacheProvider _msalTestTokenCacheProvider;
-        private IOptions<MicrosoftIdentityOptions> microsoftIdentityOptions;
 
         private KeyVaultSecretsProvider _keyVault;
         private string _ccaSecret;
@@ -48,8 +46,8 @@ namespace Microsoft.Identity.Web.Test.Integration
             }
             else
             {
-                _output.WriteLine("Connection to keyvault failed. No secret returned. ");
-                throw new ArgumentNullException(nameof(_ccaSecret), "No secret returned from keyvault. ");
+                _output.WriteLine("Connection to Key Vault failed. No secret returned. ");
+                throw new ArgumentNullException(nameof(_ccaSecret), "No secret returned from Key Vault. ");
             }
         }
 
@@ -89,65 +87,9 @@ namespace Microsoft.Identity.Web.Test.Integration
             Assert.Equal(0, _msalTestTokenCacheProvider.Count);
         }
 
-        [Theory]
-        [InlineData("")]
-        [InlineData(null)]
-        [InlineData("some_secret")]
-        public void ApplicationOptionsIncludeClientSecret(string clientSecret)
-        {
-            // Arrange
-            InitializeTokenAcquisitionObjects();
-
-            var options = new ConfidentialClientApplicationOptions
-            {
-                ClientSecret = clientSecret,
-            };
-
-            MicrosoftIdentityOptionsValidation microsoftIdentityOptionsValidation = new MicrosoftIdentityOptionsValidation();
-            ValidateOptionsResult result = microsoftIdentityOptionsValidation.ValidateClientSecret(options);
-            if (result.Failed)
-            {
-                string msg = string.Format(CultureInfo.InvariantCulture, "The 'ClientSecret' option must be provided.");
-                Assert.Equal(msg, result.FailureMessage);
-            }
-            else
-            {
-                Assert.True(result.Succeeded);
-            }
-        }
-
-        [Theory]
-        [InlineData(null, false)]
-        [InlineData("", false)]
-        [InlineData("notAUri", false)]
-        [InlineData("htt://nonhttp/", false)]
-        [InlineData("https://login.microsoftonline.com/", true)]
-        [InlineData("https://login.microsoftonline.com", true)]
-        [InlineData("https://cats.b2clogin.com/", true)]
-        [InlineData("https://cats.b2clogin.com/signout-callback-oidc", true)]
-        [InlineData("http://cats.b2clogin.com/signout-callback-oidc", true)]
-        public void ValidateRedirectUriFromMicrosoftIdentityOptions(
-            string redirectUri,
-            bool expectConfiguredUri)
-        {
-            string httpContextRedirectUri = "https://IdentityDotNetSDKAutomation/";
-
-            InitializeTokenAcquisitionObjects();
-            microsoftIdentityOptions.Value.RedirectUri = redirectUri;
-
-            if (expectConfiguredUri)
-            {
-                Assert.Equal(microsoftIdentityOptions.Value.RedirectUri, _tokenAcquisition.CreateRedirectUri());
-            }
-            else
-            {
-                Assert.Equal(httpContextRedirectUri, _tokenAcquisition.CreateRedirectUri());
-            }
-        }
-
         private void InitializeTokenAcquisitionObjects()
         {
-            microsoftIdentityOptions = _provider.GetService<IOptions<MicrosoftIdentityOptions>>();
+            IOptions<MicrosoftIdentityOptions> microsoftIdentityOptions = _provider.GetService<IOptions<MicrosoftIdentityOptions>>();
             IOptions<MsalMemoryTokenCacheOptions> tokenOptions = _provider.GetService<IOptions<MsalMemoryTokenCacheOptions>>();
             IOptions<ConfidentialClientApplicationOptions> ccOptions = _provider.GetService<IOptions<ConfidentialClientApplicationOptions>>();
             ILogger<TokenAcquisition> logger = _provider.GetService<ILogger<TokenAcquisition>>();
@@ -156,8 +98,6 @@ namespace Microsoft.Identity.Web.Test.Integration
             IHttpContextAccessor httpContextAccessor = CreateMockHttpContextAccessor();
 
             _msalTestTokenCacheProvider = new MsalTestTokenCacheProvider(
-                microsoftIdentityOptions,
-                httpContextAccessor,
                 _provider.GetService<IMemoryCache>(),
                 tokenOptions);
 
@@ -187,14 +127,14 @@ namespace Microsoft.Identity.Web.Test.Integration
 
             services.AddTokenAcquisition();
             services.AddTransient(
-                _provider => Options.Create(new MicrosoftIdentityOptions
+                provider => Options.Create(new MicrosoftIdentityOptions
                 {
                     Authority = TestConstants.AuthorityCommonTenant,
                     ClientId = TestConstants.ConfidentialClientId,
                     CallbackPath = string.Empty,
                 }));
             services.AddTransient(
-                _provider => Options.Create(new ConfidentialClientApplicationOptions
+                provider => Options.Create(new ConfidentialClientApplicationOptions
                 {
                     Instance = TestConstants.AadInstance,
                     TenantId = TestConstants.ConfidentialClientLabTenant,

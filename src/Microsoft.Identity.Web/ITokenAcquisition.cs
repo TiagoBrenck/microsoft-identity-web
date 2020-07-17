@@ -22,7 +22,7 @@ namespace Microsoft.Identity.Web
         /// <param name="tenantId">Enables to override the tenant/account for the same identity. This is useful in the
         /// cases where a given account is guest in other tenants, and you want to acquire tokens for a specific tenant.</param>
         /// <returns>An access token to call on behalf of the user, the downstream API characterized by its scopes.</returns>
-        Task<string> GetAccessTokenForUserAsync(IEnumerable<string> scopes, string tenantId = null);
+        Task<string> GetAccessTokenForUserAsync(IEnumerable<string> scopes, string? tenantId = null);
 
         /// <summary>
         /// Acquires a token from the authority configured in the app, for the confidential client itself (not on behalf of a user)
@@ -31,7 +31,7 @@ namespace Microsoft.Identity.Web
         /// <param name="scopes">scopes requested to access a protected API. For this flow (client credentials), the scopes
         /// should be of the form "{ResourceIdUri/.default}" for instance <c>https://management.azure.net/.default</c> or, for Microsoft
         /// Graph, <c>https://graph.microsoft.com/.default</c> as the requested scopes are defined statically with the application registration
-        /// in the portal, and cannot be overriden in the application.</param>
+        /// in the portal, and cannot be overridden in the application.</param>
         /// <returns>An access token for the app itself, based on its scopes.</returns>
         Task<string> GetAccessTokenForAppAsync(IEnumerable<string> scopes);
 
@@ -42,7 +42,8 @@ namespace Microsoft.Identity.Web
         /// </summary>
         /// <param name="scopes">Scopes to consent to.</param>
         /// <param name="msalSeviceException"><see cref="MsalUiRequiredException"/> triggering the challenge.</param>
-        void ReplyForbiddenWithWwwAuthenticateHeader(
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        Task ReplyForbiddenWithWwwAuthenticateHeaderAsync(
             IEnumerable<string> scopes,
             MsalUiRequiredException msalSeviceException);
     }

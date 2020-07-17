@@ -14,11 +14,8 @@ namespace Microsoft.Identity.Web.Resource
     /// </summary>
     internal class RegisterValidAudience
     {
-        private string ClientId { get; set; }
+        private string ClientId { get; set; } = null!;
         private bool IsB2C { get; set; } = false;
-        private const string Version = "ver";
-        private const string V1 = "1.0";
-        private const string V2 = "2.0";
 
         public void RegisterAudienceValidation(
             TokenValidationParameters validationParameters,
@@ -49,51 +46,45 @@ namespace Microsoft.Identity.Web.Resource
         ///  api://{ClientID}.
         ///
         /// When Web API developers don't provide the "Audience" in the configuration, Microsoft.Identity.Web
-        /// considers that this is the default App ID URI as explained abovce. When developer provide the
-        /// "Audience" member, its available in the TokenValidationParameter.ValidAudience.
+        /// considers that this is the default App ID URI as explained above. When developer provides the
+        /// "Audience" member, it's available in the TokenValidationParameter.ValidAudience.
         /// </summary>
-        /// <param name="audiences">audiences in the security token.</param>
+        /// <param name="audiences">Audiences in the security token.</param>
         /// <param name="securityToken">Security token from which to validate the audiences.</param>
         /// <param name="validationParameters">Token validation parameters.</param>
-        /// <returns>true is the token is valid, and false, otherwise.</returns>
+        /// <returns>True if the token is valid; false, otherwise.</returns>
         internal /*for test only*/ bool ValidateAudience(
             IEnumerable<string> audiences,
             SecurityToken securityToken,
             TokenValidationParameters validationParameters)
         {
-            JwtSecurityToken token = securityToken as JwtSecurityToken;
-            string validAudience;
+            JwtSecurityToken? token = securityToken as JwtSecurityToken;
+            if (token == null)
+            {
+                throw new SecurityTokenValidationException(IDWebErrorMessage.TokenIsNotJwtToken);
+            }
+
+            validationParameters.AudienceValidator = null;
 
             // Case of a default App ID URI (the developer did not provide explicit valid audience(s)
             if (string.IsNullOrEmpty(validationParameters.ValidAudience) &&
                 validationParameters.ValidAudiences == null)
             {
                 // handle v2.0 access token or Azure AD B2C tokens (even if v1.0)
-                if (IsB2C || token.Claims.Any(c => c.Type == Version && c.Value == V2))
+                if (IsB2C || token.Claims.Any(c => c.Type == Constants.Version && c.Value == Constants.V2))
                 {
-                    validAudience = $"{ClientId}";
-                    return audiences.Contains(validAudience);
+                    validationParameters.ValidAudience = $"{ClientId}";
                 }
 
                 // handle v1.0 access token
-                if (token.Claims.Any(c => c.Type == Version && c.Value == V1))
+                else if (token.Claims.Any(c => c.Type == Constants.Version && c.Value == Constants.V1))
                 {
-                    validAudience = $"api://{ClientId}";
-                    return audiences.Contains(validAudience);
+                    validationParameters.ValidAudience = $"api://{ClientId}";
                 }
-
-                throw new SecurityTokenValidationException("Token does not contain a valid audience. ");
             }
 
-            // Cases where developers explicitly provided the valid audiences
-            else if (!string.IsNullOrEmpty(validationParameters.ValidAudience))
-            {
-                return audiences.Contains(validationParameters.ValidAudience);
-            }
-            else
-            {
-                return audiences.Intersect(validationParameters.ValidAudiences).Any();
-            }
+            Validators.ValidateAudience(audiences, securityToken, validationParameters);
+            return true;
         }
     }
 }

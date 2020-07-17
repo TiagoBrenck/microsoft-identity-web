@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using Microsoft.Identity.Web.InstanceDiscovery;
@@ -18,13 +19,10 @@ namespace Microsoft.Identity.Web.Resource
     /// </summary>
     internal class AadIssuerValidator
     {
-        private const string AzureADIssuerMetadataUrl = "https://login.microsoftonline.com/common/discovery/instance?authorization_endpoint=https://login.microsoftonline.com/common/oauth2/v2.0/authorize&api-version=1.1";
-        private const string FallbackAuthority = "https://login.microsoftonline.com/";
-
         // TODO: separate AadIssuerValidator creation logic from the validation logic in order to unit test it
         private static readonly IDictionary<string, AadIssuerValidator> s_issuerValidators = new ConcurrentDictionary<string, AadIssuerValidator>();
 
-        private static readonly ConfigurationManager<IssuerMetadata> s_configManager = new ConfigurationManager<IssuerMetadata>(AzureADIssuerMetadataUrl, new IssuerConfigurationRetriever());
+        private static readonly ConfigurationManager<IssuerMetadata> s_configManager = new ConfigurationManager<IssuerMetadata>(Constants.AzureADIssuerMetadataUrl, new IssuerConfigurationRetriever());
 
         /// <summary>
         /// A list of all Issuers across the various Azure AD instances.
@@ -49,19 +47,19 @@ namespace Microsoft.Identity.Web.Resource
                 throw new ArgumentNullException(nameof(aadAuthority));
             }
 
-            Uri.TryCreate(aadAuthority, UriKind.Absolute, out Uri authorityUri);
-            string authorityHost = authorityUri?.Authority ?? new Uri(FallbackAuthority).Authority;
+            Uri.TryCreate(aadAuthority, UriKind.Absolute, out Uri? authorityUri);
+            string authorityHost = authorityUri?.Authority ?? new Uri(Constants.FallbackAuthority).Authority;
 
-            if (s_issuerValidators.TryGetValue(authorityHost, out AadIssuerValidator aadIssuerValidator))
+            if (s_issuerValidators.TryGetValue(authorityHost, out AadIssuerValidator? aadIssuerValidator))
             {
                 return aadIssuerValidator;
             }
 
             // In the constructor, we hit the Azure AD issuer metadata endpoint and cache the aliases. The data is cached for 24 hrs.
-            var issuerMetadata = s_configManager.GetConfigurationAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            IssuerMetadata issuerMetadata = s_configManager.GetConfigurationAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
             // Add issuer aliases of the chosen authority to the cache
-            var aliases = issuerMetadata.Metadata
+            IEnumerable<string> aliases = issuerMetadata.Metadata
                 .Where(m => m.Aliases.Any(a => string.Equals(a, authorityHost, StringComparison.OrdinalIgnoreCase)))
                 .SelectMany(m => m.Aliases)
                 .Append(authorityHost) // For B2C scenarios, the alias will be the authority itself
@@ -106,7 +104,7 @@ namespace Microsoft.Identity.Web.Resource
             string tenantId = GetTenantIdFromToken(securityToken);
             if (string.IsNullOrWhiteSpace(tenantId))
             {
-                throw new SecurityTokenInvalidIssuerException("Neither `tid` nor `tenantId` claim is present in the token obtained from Microsoft identity platform.");
+                throw new SecurityTokenInvalidIssuerException(IDWebErrorMessage.TenantIdClaimNotPresentInToken);
             }
 
             if (validationParameters.ValidIssuers != null)
@@ -127,7 +125,11 @@ namespace Microsoft.Identity.Web.Resource
 
             // If a valid issuer is not found, throw
             // brentsch - todo, create a list of all the possible valid issuers in TokenValidationParameters
-            throw new SecurityTokenInvalidIssuerException($"Issuer: '{actualIssuer}', does not match any of the valid issuers provided for this application.");
+            throw new SecurityTokenInvalidIssuerException(
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    IDWebErrorMessage.IssuerDoesNotMatchValidIssuers,
+                    actualIssuer));
         }
 
         private bool IsValidIssuer(string validIssuerTemplate, string tenantId, string actualIssuer)
@@ -139,8 +141,8 @@ namespace Microsoft.Identity.Web.Resource
 
             try
             {
-                var issuerFromTemplateUri = new Uri(validIssuerTemplate.Replace("{tenantid}", tenantId));
-                var actualIssuerUri = new Uri(actualIssuer);
+                Uri issuerFromTemplateUri = new Uri(validIssuerTemplate.Replace("{tenantid}", tenantId));
+                Uri actualIssuerUri = new Uri(actualIssuer);
 
                 // Template authority is in the aliases
                 return _issuerAliases.Contains(issuerFromTemplateUri.Authority) &&
@@ -173,9 +175,9 @@ namespace Microsoft.Identity.Web.Resource
         {
             if (securityToken is JwtSecurityToken jwtSecurityToken)
             {
-                if (jwtSecurityToken.Payload.TryGetValue(ClaimConstants.Tid, out object tenantId))
+                if (jwtSecurityToken.Payload.TryGetValue(ClaimConstants.Tid, out object? tenantId))
                 {
-                    return tenantId as string;
+                    return (string)tenantId;
                 }
 
                 // Since B2C doesn't have "tid" as default, get it from issuer
@@ -184,7 +186,7 @@ namespace Microsoft.Identity.Web.Resource
 
             if (securityToken is JsonWebToken jsonWebToken)
             {
-                jsonWebToken.TryGetPayloadValue(ClaimConstants.Tid, out string tid);
+                jsonWebToken.TryGetPayloadValue(ClaimConstants.Tid, out string? tid);
                 if (tid != null)
                 {
                     return tid;

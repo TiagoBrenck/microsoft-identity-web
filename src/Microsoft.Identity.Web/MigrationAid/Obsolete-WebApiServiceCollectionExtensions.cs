@@ -1,10 +1,8 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 using System;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
@@ -16,7 +14,7 @@ namespace Microsoft.Identity.Web
     /// <summary>
     /// Extensions for IServiceCollection for startup initialization of Web APIs.
     /// </summary>
-    public static class WebApiServiceCollectionExtensions
+    public static partial class WebApiServiceCollectionExtensions
     {
         /// <summary>
         /// Protects the Web API with Microsoft identity platform (formerly Azure AD v2.0)
@@ -31,20 +29,21 @@ namespace Microsoft.Identity.Web
         /// Set to true if you want to debug, or just understand the JwtBearer events.
         /// </param>
         /// <returns>The service collection to chain.</returns>
+        [Obsolete("Use services.AddMicrosoftWebApiAuthentication. See https://aka.ms/ms-id-web/net5")]
         public static IServiceCollection AddProtectedWebApi(
             this IServiceCollection services,
             IConfiguration configuration,
-            string configSectionName = "AzureAd",
+            string configSectionName = Constants.AzureAd,
             string jwtBearerScheme = JwtBearerDefaults.AuthenticationScheme,
-            X509Certificate2 tokenDecryptionCertificate = null,
+            X509Certificate2? tokenDecryptionCertificate = null,
             bool subscribeToJwtBearerMiddlewareDiagnosticsEvents = false)
         {
             AuthenticationBuilder builder = services.AddAuthentication(jwtBearerScheme);
             builder.AddProtectedWebApi(
-                options => configuration.Bind(configSectionName, options),
-                options => configuration.Bind(configSectionName, options),
-                tokenDecryptionCertificate,
+                configuration,
+                configSectionName,
                 jwtBearerScheme,
+                tokenDecryptionCertificate,
                 subscribeToJwtBearerMiddlewareDiagnosticsEvents);
             return services;
         }
@@ -62,11 +61,12 @@ namespace Microsoft.Identity.Web
         /// Set to true if you want to debug, or just understand the JwtBearer events.
         /// </param>
         /// <returns>The service collection to chain.</returns>
+        [Obsolete("Use services.AddAuthentication(jwtBearerScheme).AddMicrosoftWebApi. See https://aka.ms/ms-id-web/net5")]
         public static IServiceCollection AddProtectedWebApi(
             this IServiceCollection services,
             Action<JwtBearerOptions> configureJwtBearerOptions,
             Action<MicrosoftIdentityOptions> configureMicrosoftIdentityOptions,
-            X509Certificate2 tokenDecryptionCertificate = null,
+            X509Certificate2? tokenDecryptionCertificate = null,
             string jwtBearerScheme = JwtBearerDefaults.AuthenticationScheme,
             bool subscribeToJwtBearerMiddlewareDiagnosticsEvents = false)
         {
@@ -89,16 +89,17 @@ namespace Microsoft.Identity.Web
         /// <param name="configSectionName">Section name in the config file (by default "AzureAD").</param>
         /// <param name="jwtBearerScheme">Scheme for the JwtBearer token.</param>
         /// <returns>The service collection to chain.</returns>
+        [Obsolete("Use AddMicrosoftWebApiCallsWebApi on the result of AddMicrosoftWebApiAuthentication/AddMicrosoftWebApi. See https://aka.ms/ms-id-web/net5")]
         public static IServiceCollection AddProtectedWebApiCallsProtectedWebApi(
             this IServiceCollection services,
             IConfiguration configuration,
-            string configSectionName = "AzureAd",
+            string configSectionName = Constants.AzureAd,
             string jwtBearerScheme = JwtBearerDefaults.AuthenticationScheme)
         {
-            return services.AddProtectedWebApiCallsProtectedWebApi(
+            return services.AddAuthentication(jwtBearerScheme).AddMicrosoftWebApiCallsWebApi(
                 options => configuration.Bind(configSectionName, options),
                 options => configuration.Bind(configSectionName, options),
-                jwtBearerScheme);
+                jwtBearerScheme).Services;
         }
 
         /// <summary>
@@ -110,36 +111,17 @@ namespace Microsoft.Identity.Web
         /// <param name="configureMicrosoftIdentityOptions">The action to configure <see cref="MicrosoftIdentityOptions"/>.</param>
         /// <param name="jwtBearerScheme">Scheme for the JwtBearer token.</param>
         /// <returns>The service collection to chain.</returns>
+        [Obsolete("Use AddMicrosoftWebApiCallsWebApi on the result of AddMicrosoftWebApiAuthentication/AddMicrosoftWebApi. See https://aka.ms/ms-id-web/net5")]
         public static IServiceCollection AddProtectedWebApiCallsProtectedWebApi(
             this IServiceCollection services,
             Action<ConfidentialClientApplicationOptions> configureConfidentialClientApplicationOptions,
             Action<MicrosoftIdentityOptions> configureMicrosoftIdentityOptions,
             string jwtBearerScheme = JwtBearerDefaults.AuthenticationScheme)
         {
-            services.Configure<ConfidentialClientApplicationOptions>(configureConfidentialClientApplicationOptions);
-            services.Configure<MicrosoftIdentityOptions>(configureMicrosoftIdentityOptions);
-
-            var microsoftIdentityOptions = new MicrosoftIdentityOptions();
-            configureMicrosoftIdentityOptions(microsoftIdentityOptions);
-
-            services.AddTokenAcquisition(microsoftIdentityOptions.SingletonTokenAcquisition);
-            services.AddHttpContextAccessor();
-
-            services.Configure<JwtBearerOptions>(jwtBearerScheme, options =>
-            {
-                options.Events ??= new JwtBearerEvents();
-
-                var onTokenValidatedHandler = options.Events.OnTokenValidated;
-
-                options.Events.OnTokenValidated = async context =>
-                {
-                    await onTokenValidatedHandler(context).ConfigureAwait(false);
-                    context.HttpContext.StoreTokenUsedToCallWebAPI(context.SecurityToken as JwtSecurityToken);
-                    context.Success();
-                };
-            });
-
-            return services;
+            return services.AddAuthentication(jwtBearerScheme).AddMicrosoftWebApiCallsWebApi(
+                configureConfidentialClientApplicationOptions,
+                configureMicrosoftIdentityOptions,
+                jwtBearerScheme).Services;
         }
     }
 }

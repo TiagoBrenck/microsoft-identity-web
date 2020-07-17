@@ -9,7 +9,7 @@ This library is for specific usage with:
 
 Quick links:
 
-| [Conceptual documentation](https://github.com/AzureAD/microsoft-identity-web/wiki) | [Getting Started](https://github.com/AzureAD/microsoft-identity-web/wiki/getting-started-with-microsoft-identity-web) | [Reference documentation](https://docs.microsoft.com/en-us/dotnet/api/microsoft.identity.web?view=azure-dotnet-preview) | [Sample Code Web App](https://github.com/AzureAD/microsoft-identity-web/wiki/web-app-samples) | [Sample Code Web API](https://github.com/AzureAD/microsoft-identity-web/wiki/web-api-samples) | [Support](README.md#community-help-and-support) |
+| [Conceptual documentation](https://github.com/AzureAD/microsoft-identity-web/wiki) | [Getting Started](https://github.com/AzureAD/microsoft-identity-web/wiki#getting-started-with-microsoft-identity-web) | [Reference documentation](https://docs.microsoft.com/en-us/dotnet/api/microsoft.identity.web?view=azure-dotnet-preview) | [Sample Code Web App](https://github.com/AzureAD/microsoft-identity-web/wiki/web-app-samples) | [Sample Code Web API](https://github.com/AzureAD/microsoft-identity-web/wiki/web-api-samples) | [Support](README.md#community-help-and-support) |
 | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
 
 ## Nuget package
@@ -37,7 +37,7 @@ Microsoft Identity Web is in preview.
 - Major versions are supported for twelve months after the release of the next major version.
 - Minor versions older than N-1 are not supported.
   > Minor versions are bugfixes or features with non-breaking (additive) API changes.  It is expected apps can upgrade.  Therefore, we will not patch old minor versions of the library. You should also confirm, in issue repros, that you are using the latest minor version before the Microsoft Identity Web team spends time investigating an issue.
-- Microsoft Identity Web is expected to become Generally Available in Fall 2020.
+- Microsoft Identity Web is expected to become Generally Available in the last quarter of the 2020 calendar year.
 
 ## Using Microsoft Identity Web
 

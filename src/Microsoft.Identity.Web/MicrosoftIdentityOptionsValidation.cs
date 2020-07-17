@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Collections.Generic;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Client;
 
@@ -12,40 +14,48 @@ namespace Microsoft.Identity.Web
         {
             if (string.IsNullOrEmpty(options.ClientId))
             {
-                return ValidateOptionsResult.Fail($"The '{nameof(options.ClientId)}' option must be provided.");
+                return ValidateOptionsResult.Fail(string.Format(CultureInfo.InvariantCulture, IDWebErrorMessage.ConfigurationOptionRequired, nameof(options.ClientId)));
             }
 
             if (string.IsNullOrEmpty(options.Instance))
             {
-                return ValidateOptionsResult.Fail($"The '{nameof(options.Instance)}' option must be provided.");
+                return ValidateOptionsResult.Fail(string.Format(CultureInfo.InvariantCulture, IDWebErrorMessage.ConfigurationOptionRequired, nameof(options.Instance)));
             }
 
             if (options.IsB2C)
             {
                 if (string.IsNullOrEmpty(options.Domain))
                 {
-                    return ValidateOptionsResult.Fail($"The '{nameof(options.Domain)}' option must be provided.");
+                    return ValidateOptionsResult.Fail(string.Format(CultureInfo.InvariantCulture, IDWebErrorMessage.ConfigurationOptionRequired, nameof(options.Domain)));
                 }
             }
             else
             {
                 if (string.IsNullOrEmpty(options.TenantId))
                 {
-                    return ValidateOptionsResult.Fail($"The '{nameof(options.TenantId)}' option must be provided.");
+                    return ValidateOptionsResult.Fail(string.Format(CultureInfo.InvariantCulture, IDWebErrorMessage.ConfigurationOptionRequired, nameof(options.TenantId)));
                 }
             }
 
             return ValidateOptionsResult.Success;
         }
 
-        public ValidateOptionsResult ValidateClientSecret(ConfidentialClientApplicationOptions options)
+        public static void ValidateEitherClientCertificateOrClientSecret(
+            string? clientSecret,
+            IEnumerable<CertificateDescription>? cert)
         {
-            if (string.IsNullOrEmpty(options.ClientSecret))
+            if (string.IsNullOrEmpty(clientSecret) && (cert == null))
             {
-                return ValidateOptionsResult.Fail($"The '{nameof(options.ClientSecret)}' option must be provided.");
+                throw new MsalClientException(
+                    ErrorCodes.MissingClientCredentials,
+                    IDWebErrorMessage.ClientSecretAndCertficateNull);
             }
-
-            return ValidateOptionsResult.Success;
+            else if (!string.IsNullOrEmpty(clientSecret) && (cert != null))
+            {
+                throw new MsalClientException(
+                    ErrorCodes.DuplicateClientCredentials,
+                    IDWebErrorMessage.BothClientSecretAndCertificateProvided);
+            }
         }
     }
 }

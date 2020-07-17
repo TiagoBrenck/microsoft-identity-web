@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 
@@ -20,24 +20,24 @@ namespace Microsoft.Identity.Web.TokenCacheProviders.Distributed
         private readonly IDistributedCache _distributedCache;
 
         /// <summary>
-        /// Msal memory token cache options.
+        /// MSAL memory token cache options.
         /// </summary>
-        private readonly DistributedCacheEntryOptions _cacheOptions;
+        private readonly MsalDistributedTokenCacheAdapterOptions _cacheOptions;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MsalDistributedTokenCacheAdapter"/> class.
         /// </summary>
-        /// <param name="microsoftIdentityOptions"></param>
-        /// <param name="httpContextAccessor"></param>
-        /// <param name="memoryCache"></param>
-        /// <param name="cacheOptions"></param>
+        /// <param name="memoryCache">Distributed cache instance to use.</param>
+        /// <param name="cacheOptions">Options for the token cache.</param>
         public MsalDistributedTokenCacheAdapter(
-                                            IOptions<MicrosoftIdentityOptions> microsoftIdentityOptions,
-                                            IHttpContextAccessor httpContextAccessor,
                                             IDistributedCache memoryCache,
-                                            IOptions<DistributedCacheEntryOptions> cacheOptions)
-            : base(microsoftIdentityOptions, httpContextAccessor)
+                                            IOptions<MsalDistributedTokenCacheAdapterOptions> cacheOptions)
         {
+            if (cacheOptions == null)
+            {
+                throw new ArgumentNullException(nameof(cacheOptions));
+            }
+
             _distributedCache = memoryCache;
             _cacheOptions = cacheOptions.Value;
         }
@@ -47,6 +47,7 @@ namespace Microsoft.Identity.Web.TokenCacheProviders.Distributed
         /// from the distributed cache.
         /// </summary>
         /// <param name="cacheKey">Key of the cache to remove.</param>
+        /// <returns>A <see cref="Task"/> that completes when key removal has completed.</returns>
         protected override async Task RemoveKeyAsync(string cacheKey)
         {
             await _distributedCache.RemoveAsync(cacheKey).ConfigureAwait(false);
@@ -56,7 +57,7 @@ namespace Microsoft.Identity.Web.TokenCacheProviders.Distributed
         /// Read a specific token cache, described by its cache key, from the
         /// distributed cache.
         /// </summary>
-        /// <param name="cacheKey"></param>
+        /// <param name="cacheKey">Key of the cache item to retrieve.</param>
         /// <returns>Read blob representing a token cache for the cache key
         /// (account or app).</returns>
         protected override async Task<byte[]> ReadCacheBytesAsync(string cacheKey)
@@ -69,6 +70,7 @@ namespace Microsoft.Identity.Web.TokenCacheProviders.Distributed
         /// </summary>
         /// <param name="cacheKey">Cache key.</param>
         /// <param name="bytes">blob to write.</param>
+        /// <returns>A <see cref="Task"/> that completes when a write operation has completed.</returns>
         protected override async Task WriteCacheBytesAsync(string cacheKey, byte[] bytes)
         {
             await _distributedCache.SetAsync(cacheKey, bytes, _cacheOptions).ConfigureAwait(false);

@@ -1,8 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!--This should be passed from the VSTS build-->
+    <ClientSemVer Condition="'$(ClientSemVer)' == ''">0.2.1-preview</ClientSemVer>
+    <!--This will generate AssemblyVersion, AssemblyFileVersion and AssemblyInformationVersion-->
+    <PackageVersion>$(ClientSemVer)</PackageVersion>
+    
     <PackageType>Template</PackageType>
-    <PackageVersion>0.1.4</PackageVersion>
     <PackageId>Microsoft.Identity.Web.ProjectTemplates</PackageId>
     <Title>ASP.NET Core Web app and Web API templates with Microsoft identity platform</Title>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -17,10 +21,14 @@
     <RepositoryUrl>https://github.com/AzureAD/microsoft-identity-web</RepositoryUrl>
     <PackageReleaseNotes>The changelog is available at https://github.com/AzureAD/microsoft-identity-web/blob/master/changelog.txt and the roadmap at https://github.com/AzureAD/microsoft-identity-web/wiki#roadmap </PackageReleaseNotes>
     <PackageTags>dotnet-new;templates;Microsoft;Microsoft identity platform;Microsoft.Identity.Web</PackageTags>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+     <TargetFrameworks>netcoreapp3.1; net5.0</TargetFrameworks>
     <IncludeContentInPack>true</IncludeContentInPack>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <ContentTargetFolders>content</ContentTargetFolders>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -24,7 +24,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-
+#if (GenerateApiOrGraph)
+using Company.WebApplication1.Services;
+#endif
+#if (CallsMicrosoftGraph)
+using Microsoft.Graph;
+#endif
 namespace Company.WebApplication1
 {
     public class Startup
@@ -41,17 +46,33 @@ namespace Company.WebApplication1
         {
 #if (OrganizationalAuth)
             // Adds Microsoft Identity platform (AAD v2.0) support to protect this Api
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                    .AddProtectedWebApi(Configuration, "AzureAd");
-            // Uncomment the following lines if you want your Web API to call a downstream API
-            // services.AddProtectedWebApiCallsProtectedWebApi(Configuration, "AzureAd")
-            //         .AddInMemoryTokenCaches();
+            services.AddMicrosoftWebApiAuthentication(Configuration, "AzureAd")
+#if (GenerateApi || CallsMicrosoftGraph)
+                    .AddMicrosoftWebAppCallsWebApi(Configuration, 
+                                                   "AzureAd")
+                    .AddInMemoryTokenCaches();
+
+#else
+                    ;
+#endif
+#if (GenerateApi)
+            services.AddDownstreamWebApiService(Configuration);
+#endif
+#if (CallsMicrosoftGraph)
+            services.AddMicrosoftGraph(Configuration.GetValue<string>("CalledApi:CalledApiScopes")?.Split(' '),
+                                       Configuration.GetValue<string>("CalledApi:CalledApiUrl"));
+#endif
 #elif (IndividualB2CAuth)
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                    .AddProtectedWebApi(Configuration, "AzureAdB2C");
-            // Uncomment the following lines if you want your Web API to call a downstream API
-            // services.AddProtectedWebApiCallsProtectedWebApi(Configuration, "AzureAdB2C")
-            //         .AddInMemoryTokenCaches();
+            services.AddMicrosoftWebApiAuthentication(Configuration, "AzureAdB2C")
+#if (GenerateApi)
+                    .AddMicrosoftWebAppCallsWebApi(Configuration, 
+                                                   "AzureAdB2C")
+                    .AddInMemoryTokenCaches();
+
+            services.AddDownstreamWebApiService(Configuration);
+#else
+                    ;
+#endif
 #endif
 
             services.AddControllers();

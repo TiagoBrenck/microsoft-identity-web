@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Microsoft.Identity.Web.InstanceDiscovery
 {
@@ -14,19 +14,19 @@ namespace Microsoft.Identity.Web.InstanceDiscovery
         /// <summary>
         /// Tenant discovery endpoint.
         /// </summary>
-        [JsonProperty(PropertyName = "tenant_discovery_endpoint")]
-        public string TenantDiscoveryEndpoint { get; set; }
+        [JsonPropertyName(Constants.TenantDiscoveryEndpoint)]
+        public string? TenantDiscoveryEndpoint { get; set; }
 
         /// <summary>
         /// API Version.
         /// </summary>
-        [JsonProperty(PropertyName = "api-version")]
-        public string ApiVersion { get; set; }
+        [JsonPropertyName(Constants.ApiVersion)]
+        public string? ApiVersion { get; set; }
 
         /// <summary>
         /// List of metadata associated with the endpoint.
         /// </summary>
-        [JsonProperty(PropertyName = "metadata")]
-        public List<Metadata> Metadata { get; set; }
+        [JsonPropertyName(Constants.Metadata)]
+        public List<Metadata> Metadata { get; set; } = new List<Metadata>();
     }
 }

@@ -2,9 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
@@ -17,58 +15,50 @@ using Microsoft.IdentityModel.Tokens;
 namespace Microsoft.Identity.Web
 {
     /// <summary>
-    /// Extensions for AuthenticationBuilder for startup initialization of Web APIs.
+    /// Extensions for <see cref="AuthenticationBuilder"/> for startup initialization of web APIs.
     /// </summary>
-    public static class WebApiAuthenticationBuilderExtensions
+    public static partial class WebApiAuthenticationBuilderExtensions
     {
         /// <summary>
-        /// Protects the Web API with Microsoft identity platform (formerly Azure AD v2.0)
+        /// Protects the web API with Microsoft identity platform (formerly Azure AD v2.0).
         /// This method expects the configuration file will have a section, named "AzureAd" as default, with the necessary settings to initialize authentication options.
         /// </summary>
-        /// <param name="builder">AuthenticationBuilder to which to add this configuration.</param>
-        /// <param name="configuration">The Configuration object.</param>
+        /// <param name="builder">The <see cref="AuthenticationBuilder"/> to which to add this configuration.</param>
+        /// <param name="configuration">The configuration instance.</param>
         /// <param name="configSectionName">The configuration section with the necessary settings to initialize authentication options.</param>
-        /// <param name="jwtBearerScheme">The JwtBearer scheme name to be used. By default it uses "Bearer".</param>
-        /// <param name="tokenDecryptionCertificate">Token decryption certificate (null by default).</param>
+        /// <param name="jwtBearerScheme">The JWT bearer scheme name to be used. By default it uses "Bearer".</param>
         /// <param name="subscribeToJwtBearerMiddlewareDiagnosticsEvents">
-        /// Set to true if you want to debug, or just understand the JwtBearer events.
+        /// Set to true if you want to debug, or just understand the JWT bearer events.
         /// </param>
         /// <returns>The authentication builder to chain.</returns>
-        public static AuthenticationBuilder AddProtectedWebApi(
+        public static AuthenticationBuilder AddMicrosoftWebApi(
             this AuthenticationBuilder builder,
             IConfiguration configuration,
-            string configSectionName = "AzureAd",
+            string configSectionName = Constants.AzureAd,
             string jwtBearerScheme = JwtBearerDefaults.AuthenticationScheme,
-            X509Certificate2 tokenDecryptionCertificate = null,
             bool subscribeToJwtBearerMiddlewareDiagnosticsEvents = false)
         {
-            return builder.AddProtectedWebApi(
+            return builder.AddMicrosoftWebApi(
                 options => configuration.Bind(configSectionName, options),
                 options => configuration.Bind(configSectionName, options),
-                tokenDecryptionCertificate,
                 jwtBearerScheme,
                 subscribeToJwtBearerMiddlewareDiagnosticsEvents);
         }
 
         /// <summary>
-        /// Protects the Web API with Microsoft identity platform (formerly Azure AD v2.0)
-        /// This method expects the configuration file will have a section, named "AzureAd" as default, with the necessary settings to initialize authentication options.
+        /// Protects the Web API with Microsoft identity platform (formerly Azure AD v2.0).
         /// </summary>
-        /// <param name="builder">AuthenticationBuilder to which to add this configuration.</param>
+        /// <param name="builder">The <see cref="AuthenticationBuilder"/> to which to add this configuration.</param>
         /// <param name="configureJwtBearerOptions">The action to configure <see cref="JwtBearerOptions"/>.</param>
-        /// <param name="configureMicrosoftIdentityOptions">The action to configure the <see cref="MicrosoftIdentityOptions"/>
-        /// configuration options.</param>
-        /// <param name="tokenDecryptionCertificate">Token decryption certificate.</param>
-        /// <param name="jwtBearerScheme">The JwtBearer scheme name to be used. By default it uses "Bearer".</param>
+        /// <param name="configureMicrosoftIdentityOptions">The action to configure the <see cref="MicrosoftIdentityOptions"/>.</param>
+        /// <param name="jwtBearerScheme">The JWT bearer scheme name to be used. By default it uses "Bearer".</param>
         /// <param name="subscribeToJwtBearerMiddlewareDiagnosticsEvents">
-        /// Set to true if you want to debug, or just understand the JwtBearer events.
-        /// </param>
+        /// Set to true if you want to debug, or just understand the JWT bearer events.</param>
         /// <returns>The authentication builder to chain.</returns>
-        public static AuthenticationBuilder AddProtectedWebApi(
+        public static AuthenticationBuilder AddMicrosoftWebApi(
             this AuthenticationBuilder builder,
             Action<JwtBearerOptions> configureJwtBearerOptions,
             Action<MicrosoftIdentityOptions> configureMicrosoftIdentityOptions,
-            X509Certificate2 tokenDecryptionCertificate = null,
             string jwtBearerScheme = JwtBearerDefaults.AuthenticationScheme,
             bool subscribeToJwtBearerMiddlewareDiagnosticsEvents = false)
         {
@@ -77,36 +67,50 @@ namespace Microsoft.Identity.Web
                 throw new ArgumentNullException(nameof(builder));
             }
 
-            builder.Services.Configure(jwtBearerScheme, configureJwtBearerOptions);
-            builder.Services.Configure<MicrosoftIdentityOptions>(configureMicrosoftIdentityOptions);
+            if (configureJwtBearerOptions == null)
+            {
+                throw new ArgumentNullException(nameof(configureJwtBearerOptions));
+            }
+
+            if (configureMicrosoftIdentityOptions == null)
+            {
+                throw new ArgumentNullException(nameof(configureMicrosoftIdentityOptions));
+            }
+
+            builder.AddJwtBearer(jwtBearerScheme, configureJwtBearerOptions);
+            builder.Services.Configure(configureMicrosoftIdentityOptions);
 
             builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<MicrosoftIdentityOptions>, MicrosoftIdentityOptionsValidation>());
             builder.Services.AddHttpContextAccessor();
-            builder.Services.AddSingleton<IJwtBearerMiddlewareDiagnostics, JwtBearerMiddlewareDiagnostics>();
             builder.Services.AddHttpClient();
 
-            // Change the authentication configuration to accommodate the Microsoft identity platform endpoint (v2.0).
-            builder.AddJwtBearer(jwtBearerScheme, options =>
+            if (subscribeToJwtBearerMiddlewareDiagnosticsEvents)
             {
-                // TODO:
-                // Suspect. Why not get the IOption<MicrosoftIdentityOptions>?
-                var microsoftIdentityOptions = new MicrosoftIdentityOptions(); // configuration.GetSection(configSectionName).Get<MicrosoftIdentityOptions>();
-                configureMicrosoftIdentityOptions(microsoftIdentityOptions);
+                builder.Services.AddSingleton<IJwtBearerMiddlewareDiagnostics, JwtBearerMiddlewareDiagnostics>();
+            }
 
+            // Change the authentication configuration to accommodate the Microsoft identity platform endpoint (v2.0).
+            builder.Services.AddOptions<JwtBearerOptions>(jwtBearerScheme)
+                .Configure<IServiceProvider, IOptions<MicrosoftIdentityOptions>>((options, serviceProvider, microsoftIdentityOptions) =>
+            {
                 if (string.IsNullOrWhiteSpace(options.Authority))
                 {
-                    options.Authority = AuthorityHelpers.BuildAuthority(microsoftIdentityOptions);
+                    options.Authority = AuthorityHelpers.BuildAuthority(microsoftIdentityOptions.Value);
                 }
 
                 // This is a Microsoft identity platform Web API
                 options.Authority = AuthorityHelpers.EnsureAuthorityIsV2(options.Authority);
 
-                if (options.TokenValidationParameters.AudienceValidator == null)
+                options.TokenValidationParameters = options.TokenValidationParameters.Clone();
+
+                if (options.TokenValidationParameters.AudienceValidator == null
+                 && options.TokenValidationParameters.ValidAudience == null
+                 && options.TokenValidationParameters.ValidAudiences == null)
                 {
                     RegisterValidAudience registerAudience = new RegisterValidAudience();
                     registerAudience.RegisterAudienceValidation(
                         options.TokenValidationParameters,
-                        microsoftIdentityOptions);
+                        microsoftIdentityOptions.Value);
                 }
 
                 // If the developer registered an IssuerValidator, do not overwrite it
@@ -118,9 +122,10 @@ namespace Microsoft.Identity.Web
                 }
 
                 // If you provide a token decryption certificate, it will be used to decrypt the token
-                if (tokenDecryptionCertificate != null)
+                if (microsoftIdentityOptions.Value.TokenDecryptionCertificates != null)
                 {
-                    options.TokenValidationParameters.TokenDecryptionKey = new X509SecurityKey(tokenDecryptionCertificate);
+                    options.TokenValidationParameters.TokenDecryptionKey =
+                        new X509SecurityKey(DefaultCertificateLoader.LoadFirstCertificate(microsoftIdentityOptions.Value.TokenDecryptionCertificates));
                 }
 
                 if (options.Events == null)
@@ -139,7 +144,7 @@ namespace Microsoft.Identity.Web
                     && !context.Principal.Claims.Any(y => y.Type == ClaimConstants.Roles)
                     && !context.Principal.Claims.Any(y => y.Type == ClaimConstants.Role))
                     {
-                        throw new UnauthorizedAccessException("Neither scope or roles claim was found in the bearer token.");
+                        throw new UnauthorizedAccessException(IDWebErrorMessage.NeitherScopeOrRolesClaimFoundInToken);
                     }
 
                     await tokenValidatedHandler(context).ConfigureAwait(false);
@@ -147,9 +152,9 @@ namespace Microsoft.Identity.Web
 
                 if (subscribeToJwtBearerMiddlewareDiagnosticsEvents)
                 {
-                    var diags = builder.Services.BuildServiceProvider().GetRequiredService<IJwtBearerMiddlewareDiagnostics>();
+                    var diagnostics = serviceProvider.GetRequiredService<IJwtBearerMiddlewareDiagnostics>();
 
-                    diags.Subscribe(options.Events);
+                    diagnostics.Subscribe(options.Events);
                 }
             });
 

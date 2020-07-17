@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Microsoft.Identity.Web.InstanceDiscovery
 {
@@ -14,20 +14,20 @@ namespace Microsoft.Identity.Web.InstanceDiscovery
         /// <summary>
         /// Preferred alias.
         /// </summary>
-        [JsonProperty(PropertyName = "preferred_network")]
-        public string PreferredNetwork { get; set; }
+        [JsonPropertyName(Constants.PreferredNetwork)]
+        public string? PreferredNetwork { get; set; }
 
         /// <summary>
         /// Preferred alias to cache tokens emitted by one of the aliases (to avoid
         /// SSO islands).
         /// </summary>
-        [JsonProperty(PropertyName = "preferred_cache")]
-        public string PreferredCache { get; set; }
+        [JsonPropertyName(Constants.PreferredCache)]
+        public string? PreferredCache { get; set; }
 
         /// <summary>
         /// Aliases of issuer URLs which are equivalent.
         /// </summary>
-        [JsonProperty(PropertyName = "aliases")]
-        public List<string> Aliases { get; set; }
+        [JsonPropertyName(Constants.Aliases)]
+        public List<string> Aliases { get; set; } = new List<string>();
     }
 }

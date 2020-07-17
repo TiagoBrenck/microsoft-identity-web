@@ -21,23 +21,18 @@ namespace Microsoft.Identity.Web.TokenCacheProviders.InMemory
         private readonly IMemoryCache _memoryCache;
 
         /// <summary>
-        /// Msal memory token cache options.
+        /// MSAL memory token cache options.
         /// </summary>
         private readonly MsalMemoryTokenCacheOptions _cacheOptions;
 
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="microsoftIdentityOptions">Configuration options.</param>
-        /// <param name="httpContextAccessor">Accessor to the HttpContext.</param>
         /// <param name="memoryCache">serialization cache.</param>
         /// <param name="cacheOptions">Memory cache options.</param>
         public MsalMemoryTokenCacheProvider(
-            IOptions<MicrosoftIdentityOptions> microsoftIdentityOptions,
-            IHttpContextAccessor httpContextAccessor,
             IMemoryCache memoryCache,
             IOptions<MsalMemoryTokenCacheOptions> cacheOptions)
-            : base(microsoftIdentityOptions, httpContextAccessor)
         {
             if (cacheOptions == null)
             {
@@ -53,6 +48,7 @@ namespace Microsoft.Identity.Web.TokenCacheProviders.InMemory
         /// cache.
         /// </summary>
         /// <param name="cacheKey">token cache key.</param>
+        /// <returns>A <see cref="Task"/> that completes when key removal has completed.</returns>
         protected override Task RemoveKeyAsync(string cacheKey)
         {
             _memoryCache.Remove(cacheKey);
@@ -75,9 +71,10 @@ namespace Microsoft.Identity.Web.TokenCacheProviders.InMemory
         /// </summary>
         /// <param name="cacheKey">Token cache key.</param>
         /// <param name="bytes">Bytes to write.</param>
+        /// <returns>A <see cref="Task"/> that completes when a write operation has completed.</returns>
         protected override Task WriteCacheBytesAsync(string cacheKey, byte[] bytes)
         {
-            _memoryCache.Set(cacheKey, bytes, _cacheOptions.SlidingExpiration);
+            _memoryCache.Set(cacheKey, bytes, _cacheOptions.AbsoluteExpirationRelativeToNow);
             return Task.CompletedTask;
         }
     }
